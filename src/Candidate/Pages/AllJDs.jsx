@@ -78,7 +78,9 @@ const AllJDs = () => {
                             department: item.department || '',
                             createdBy: item.createdBy || {},
                             publicToken: item.publicToken || '',
-                        }));
+                            createdAt: item.createdAt || '',
+                        }))
+                        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
                     setJdData(mappedData);
                 }
 
@@ -139,6 +141,16 @@ const AllJDs = () => {
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
+
+        if (name === 'phone') {
+            const numericValue = value.replace(/[^0-9]/g, '');
+            setFormData(prev => ({
+                ...prev,
+                [name]: numericValue
+            }));
+            return;
+        }
+
         setFormData(prev => ({
             ...prev,
             [name]: type === 'checkbox' ? checked : value
@@ -200,7 +212,7 @@ const AllJDs = () => {
 
         } catch (error) {
             console.error('Error submitting application:', error);
-            const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to submit application. Please try again.';
+            const errorMessage = "Please enter registered Email Id";
             alert(errorMessage);
         } finally {
             setSubmitting(false);
@@ -276,8 +288,7 @@ const AllJDs = () => {
 
                                 <div className="mb-4">
                                     <p className="text-gray-900 font-medium">
-                                        {candidate.company}{" "}
-                                        <span className="text-gray-600">({candidate.companyId})</span>
+                                        {candidate.company}
                                     </p>
                                 </div>
 
@@ -479,13 +490,14 @@ const AllJDs = () => {
                                         Phone<span className="text-red-500">*</span>
                                     </label>
                                     <input
-                                        type="tel"
+                                        type="text"
                                         name="phone"
                                         value={formData.phone}
                                         onChange={handleInputChange}
                                         placeholder="Enter your phone number"
                                         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-black focus:outline-none"
                                         required
+                                        maxLength={10}
                                     />
                                 </div>
 
@@ -556,18 +568,6 @@ const AllJDs = () => {
                                         ))}
                                     </div>
                                 </div>
-                                <div>
-                                    <span className="font-semibold">Location:</span>{" "}
-                                    {selectedJob?.location}
-                                </div>
-                                <div>
-                                    <span className="font-semibold">Expected CTC:</span>{" "}
-                                    {selectedJob?.expectedCTC || "NA"}
-                                </div>
-                                <div>
-                                    <span className="font-semibold">Notice Period:</span>{" "}
-                                    {selectedJob?.noticePeriod || "NA"}
-                                </div>
                             </div>
 
                             <div>
@@ -576,7 +576,7 @@ const AllJDs = () => {
                                     <span className="truncate">{selectedJob?.resume || "resume_2024.pdf"}</span>
                                     <button
                                         className="text-gray-500 hover:text-black"
-                                        onClick={() => navigator.clipboard.writeText(selectedJob?.resume || "resume_2024.pdf")}
+                                        onClick={() => navigator.clipboard.writeText(selectedJob?.resume || "resume.pdf")}
                                     >
                                         Copy
                                     </button>

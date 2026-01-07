@@ -5,17 +5,20 @@ import RequirementAddNote from './RequirementAddNote';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { baseUrl } from '../../utils/ApiConstants';
+import SpinLoader from '../../components/SpinLoader';
 
 export default function AssignedRecruiters() {
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [jobs, setJobs] = useState([]);
+    const [loading, setLoading] = useState(true);
     const jobsPerPage = 5;
 
     useEffect(() => {
         const fetchAllOffer = async () => {
             try {
+                setLoading(true);
                 const response = await axios.get(`${baseUrl}/api/offer/overview`, {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem('token')}`,
@@ -38,6 +41,8 @@ export default function AssignedRecruiters() {
 
             } catch (error) {
                 console.error('Error fetching offers:', error);
+            } finally {
+                setLoading(false);
             }
         }
 
@@ -88,6 +93,14 @@ export default function AssignedRecruiters() {
             default: return 'bg-gray-100 text-gray-700';
         }
     };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <SpinLoader />
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen">

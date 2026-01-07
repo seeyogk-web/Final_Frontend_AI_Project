@@ -87,7 +87,6 @@ const RMGHeader = ({ onMenuToggle }) => {
                             </p>
                         </div>
 
-                        <ChevronDown size={16} className="text-gray-400" />
                     </div>
                 </div>
             </div>

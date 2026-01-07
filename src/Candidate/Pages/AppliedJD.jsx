@@ -15,14 +15,14 @@ function AppliedJD() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await axios.get(`${baseUrl}/api/candidate/applied-jobs`, {
+                const response = await axios.get(`${baseUrl}/api/candidate/applied-jds`, {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem('candidateToken')}`,
                     },
                 });
                 console.log('Applied JDs data:', response.data);
                 if (response.data.success) {
-                    setAppliedJobs(response.data.jobs);
+                    setAppliedJobs(response.data.data);
                 }
             } catch (error) {
                 console.error('Error fetching applied JDs:', error);
@@ -134,7 +134,7 @@ function AppliedJD() {
                             <tr className="border-b border-gray-300 bg-gray-50">
                                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">ID</th>
                                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Company Name</th>
-                                <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Department</th>
+                                <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Job Title</th>
                                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Applied On</th>
                                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Skills</th>
 
@@ -151,7 +151,7 @@ function AppliedJD() {
                                             {index + 1}
                                         </td>
                                         <td className="py-4 px-4 text-sm text-gray-600">{job.companyName}</td>
-                                        <td className="py-4 px-4 text-sm text-gray-600">{job.department}</td>
+                                        <td className="py-4 px-4 text-sm text-gray-600">{job?.offerId?.jobTitle}</td>
                                         <td className="py-4 px-4 text-sm text-gray-600">
                                             {formatDate(job.createdAt)}
                                         </td>
@@ -169,7 +169,7 @@ function AppliedJD() {
                             ) : (
                                 <tr>
                                     <td colSpan="6" className="py-6 text-center text-gray-500">
-                                        No candidates found
+                                        No JDs found
                                     </td>
                                 </tr>
                             )}

@@ -16,6 +16,7 @@ import {
 import img from "../../assets/RMGDashImg1.png";
 import axios from "axios";
 import { baseUrl } from "../../utils/ApiConstants";
+import Pagination from "../../components/LandingPage/Pagination";
 
 const getMonthName = (monthNum) => {
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -41,6 +42,12 @@ export default function RMGDashboard() {
     });
     const [recruitersData, setRecruitersData] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    const [currentOffersPage, setCurrentOffersPage] = useState(1);
+    const offersPerPage = 5;
+
+    const [recruitersPage, setRecruitersPage] = useState(1);
+    const recruitersPerPage = 5;
 
     useEffect(() => {
         const fetchAllData = async () => {
@@ -166,6 +173,16 @@ export default function RMGDashboard() {
 
         fetchAllData();
     }, []);
+
+    const totalOffersPages = Math.ceil(currentOffers.length / offersPerPage);
+    const indexOfLastOffer = currentOffersPage * offersPerPage;
+    const indexOfFirstOffer = indexOfLastOffer - offersPerPage;
+    const currentOffersToShow = currentOffers.slice(indexOfFirstOffer, indexOfLastOffer);
+
+    const totalRecruitersPages = Math.ceil(recruitersData.length / recruitersPerPage);
+    const indexOfLastRecruiter = recruitersPage * recruitersPerPage;
+    const indexOfFirstRecruiter = indexOfLastRecruiter - recruitersPerPage;
+    const currentRecruitersToShow = recruitersData.slice(indexOfFirstRecruiter, indexOfLastRecruiter);
 
     const jdTotal = jdStatusPercentage.closed + jdStatusPercentage.inProgress + 
                     jdStatusPercentage.jdCreated + jdStatusPercentage.jdPending + 
@@ -362,8 +379,8 @@ export default function RMGDashboard() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {currentOffers.length > 0 ? (
-                                    currentOffers.map((offer) => (
+                                {currentOffersToShow.length > 0 ? (
+                                    currentOffersToShow.map((offer) => (
                                         <tr key={offer._id} className="rounded-lg">
                                             <td className="px-2 py-2 font-medium border border-gray-500 text-slate-600">
                                                 {offer.jobTitle}
@@ -407,6 +424,14 @@ export default function RMGDashboard() {
                             </tbody>
                         </table>
                     </div>
+                    
+                    {currentOffers.length > offersPerPage && (
+                        <Pagination
+                            currentPage={currentOffersPage}
+                            totalPages={totalOffersPages}
+                            onPageChange={setCurrentOffersPage}
+                        />
+                    )}
                 </div>
             </div>
 
@@ -550,13 +575,13 @@ export default function RMGDashboard() {
                             </tr>
                         </thead>
                         <tbody>
-                            {recruitersData.length > 0 ? (
-                                recruitersData.map((rec, index) => (
+                            {currentRecruitersToShow.length > 0 ? (
+                                currentRecruitersToShow.map((rec, index) => (
                                     <tr
                                         key={index}
                                         className="border-b border-gray-400 text-sm text-gray-700 hover:bg-gray-50"
                                     >
-                                        <td className="px-4 py-3">{index + 1}.</td>
+                                        <td className="px-4 py-3">{indexOfFirstRecruiter + index + 1}.</td>
                                         <td className="px-4 py-3">{rec.recruiterName}</td>
                                         <td className="px-4 py-3">{rec.activeJDs}</td>
                                         <td className="px-4 py-3">{rec.candidateShortlisted}</td>
@@ -584,6 +609,15 @@ export default function RMGDashboard() {
                         </tbody>
                     </table>
                 </div>
+                
+                {recruitersData.length > recruitersPerPage && (
+                    <Pagination
+                        currentPage={recruitersPage}
+                        totalPages={totalRecruitersPages}
+                        onPageChange={setRecruitersPage}
+                    />
+                )}
+                
                 <div className="text-center py-3">
                     <a
                         href="#"

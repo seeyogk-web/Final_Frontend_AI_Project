@@ -11,6 +11,7 @@ import {
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { baseUrl } from "../../utils/ApiConstants";
+import Pagination from "../../components/LandingPage/Pagination";
 
 const CandidateDashboard = () => {
     const [range, setRange] = useState("1 Day");
@@ -25,6 +26,9 @@ const CandidateDashboard = () => {
     const [contributionView, setContributionView] = useState("Years");
     const [candidateName, setCandidateName] = useState("Candidate");
     const [currentDate, setCurrentDate] = useState("");
+    
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 3;
 
     const ranges = ["1 Day", "1 Month", "1 Year", "Max"];
 
@@ -114,6 +118,17 @@ const CandidateDashboard = () => {
 
         fetchlatestfivejds()
     }, [])
+
+    const totalPages = Math.ceil(appliedJobs.length / itemsPerPage);
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentApplications = appliedJobs.slice(indexOfFirstItem, indexOfLastItem);
+
+    const handlePageChange = (page) => {
+        if (page >= 1 && page <= totalPages) {
+            setCurrentPage(page);
+        }
+    };
 
     const getGreeting = () => {
         const hour = new Date().getHours();
@@ -342,7 +357,7 @@ const CandidateDashboard = () => {
                         </a>
                     </div>
                     <div className="min-w-[600px]">
-                        {appliedJobs.length > 0 ? appliedJobs.map((job, i) => (
+                        {currentApplications.length > 0 ? currentApplications.map((job, i) => (
                             <div
                                 key={job._id || i}
                                 className="flex justify-between items-center mb-4 border-b border-gray-100 pb-4 last:border-0 shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-2 rounded-2xl"
@@ -369,6 +384,14 @@ const CandidateDashboard = () => {
                             </div>
                         )}
                     </div>
+                    
+                    {appliedJobs.length > itemsPerPage && (
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={handlePageChange}
+                        />
+                    )}
                 </div>
 
                 <div className="bg-white shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] rounded-xl p-6 flex flex-col items-center justify-center">

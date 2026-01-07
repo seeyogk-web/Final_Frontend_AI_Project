@@ -23,6 +23,9 @@ function JD() {
 
   const rowsPerPage = 5;
 
+  const [incomingCurrentPage, setIncomingCurrentPage] = useState(1);
+  const incomingRowsPerPage = 5;
+
   useEffect(() => {
     fetchJDs();
     fetchIncomingJDs();
@@ -41,7 +44,7 @@ function JD() {
       console.log('JDs Data:', response.data);
 
       if (response.data.success && response.data.data) {
-        const data = response.data.data;
+        const data = response.data.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         setJdData(data);
 
         let totalFiltered = 0;
@@ -77,7 +80,9 @@ function JD() {
       console.log("aaa", response.data);
 
       if (response.data.success) {
-        const filteredData = response.data.data.filter(jd => jd.isJDCreated === false);
+        const filteredData = response.data.data
+          .filter(jd => jd.isJDCreated === false)
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         setIncomingJDs(filteredData);
       }
     } catch (error) {
@@ -104,6 +109,15 @@ function JD() {
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
+  };
+
+  const incomingTotalPages = Math.ceil(incomingJDs.length / incomingRowsPerPage);
+  const incomingStartIndex = (incomingCurrentPage - 1) * incomingRowsPerPage;
+  const incomingEndIndex = incomingStartIndex + incomingRowsPerPage;
+  const currentIncomingData = incomingJDs.slice(incomingStartIndex, incomingEndIndex);
+
+  const handleIncomingPageChange = (page) => {
+    setIncomingCurrentPage(page);
   };
 
   const formatDate = (dateString) => {
@@ -268,15 +282,15 @@ function JD() {
                 )}
 
                 {/* Show message if no data available */}
-                {!selectedJDSummary.jobSummary && 
-                 selectedJDSummary.requirements?.length === 0 && 
-                 selectedJDSummary.responsibilities?.length === 0 && 
-                 selectedJDSummary.benefits?.length === 0 && 
-                 !selectedJDSummary.additionalInfo && (
-                  <div className="text-center py-8 text-gray-500">
-                    No JD details available
-                  </div>
-                )}
+                {!selectedJDSummary.jobSummary &&
+                  selectedJDSummary.requirements?.length === 0 &&
+                  selectedJDSummary.responsibilities?.length === 0 &&
+                  selectedJDSummary.benefits?.length === 0 &&
+                  !selectedJDSummary.additionalInfo && (
+                    <div className="text-center py-8 text-gray-500">
+                      No JD details available
+                    </div>
+                  )}
               </div>
             </div>
           </div>
@@ -458,10 +472,10 @@ function JD() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {incomingJDs.map((jd, index) => (
+                  {currentIncomingData.map((jd, index) => (
                     <tr key={jd._id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {index + 1}
+                        {incomingStartIndex + index + 1}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {jd.jobTitle || '-'}
@@ -498,6 +512,13 @@ function JD() {
                   ))}
                 </tbody>
               </table>
+            )}
+            {incomingTotalPages > 1 && (
+              <Pagination
+                currentPage={incomingCurrentPage}
+                totalPages={incomingTotalPages}
+                onPageChange={handleIncomingPageChange}
+              />
             )}
           </div>
         </div>
