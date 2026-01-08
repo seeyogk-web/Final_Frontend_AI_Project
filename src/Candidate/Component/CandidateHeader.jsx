@@ -1,11 +1,36 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Search, Bell, MessageCircle, Menu, ChevronDown } from "lucide-react";
 import axios from "axios";
 import { baseUrl } from "../../utils/ApiConstants";
 
+import { useNavigate } from "react-router-dom";
+
 
 const CandidateHeader = ({ onMenuToggle }) => {
     const [user, setUser] = useState(null);
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const dropdownRef = useRef(null);
+    const navigate = useNavigate();
+        // Close dropdown on outside click
+        useEffect(() => {
+            function handleClickOutside(event) {
+                if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                    setDropdownOpen(false);
+                }
+            }
+            document.addEventListener("mousedown", handleClickOutside);
+            return () => document.removeEventListener("mousedown", handleClickOutside);
+        }, []);
+        const handleLogout = () => {
+            localStorage.removeItem('candidateToken');
+            localStorage.removeItem('candidate');
+            navigate('/Candidatelogin');
+        };
+
+        const handleProfile = () => {
+            setDropdownOpen(false);
+            navigate('/Candidate-Dashboard/CandidateProfile');
+        };
     const [dateTime, setDateTime] = useState("");
 
     const formatDateTime = () => {
@@ -81,10 +106,30 @@ const CandidateHeader = ({ onMenuToggle }) => {
                             {user?.name ? user.name[0].toUpperCase() : "?"}
                         </div>
 
-                        <div className="hidden sm:block">
-                            <p className="text-sm font-medium text-gray-700">
+                        <div className="relative hidden sm:block" ref={dropdownRef}>
+                            <button
+                                className="flex items-center gap-1 text-sm font-medium text-gray-700 focus:outline-none"
+                                onClick={() => setDropdownOpen((prev) => !prev)}
+                            >
                                 {user?.name || "Loading..."}
-                            </p>
+                                <ChevronDown size={18} className="ml-1" />
+                            </button>
+                            {dropdownOpen && (
+                                <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-50 animate-fade-in">
+                                    <button
+                                        onClick={handleProfile}
+                                        className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 rounded-t-lg"
+                                    >
+                                        Profile
+                                    </button>
+                                    <button
+                                        onClick={handleLogout}
+                                        className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600 rounded-b-lg"
+                                    >
+                                        Logout
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                     </div>

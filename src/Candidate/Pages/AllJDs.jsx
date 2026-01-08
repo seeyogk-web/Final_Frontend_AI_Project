@@ -15,6 +15,9 @@ const AllJDs = () => {
     const [showCandidateModal, setShowCandidateModal] = useState(false);
     const [selectedJob, setSelectedJob] = useState(null);
     const [resume, setResume] = useState(null);
+    const [existingResume, setExistingResume] = useState(null);
+    const [resumeChoiceModal, setResumeChoiceModal] = useState(false);
+    const [useExistingResume, setUseExistingResume] = useState(false);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -22,6 +25,9 @@ const AllJDs = () => {
         phone: '',
         reallocate: false
     });
+    const [searchTerm, setSearchTerm] = useState("");
+    const [filterLocation, setFilterLocation] = useState("");
+    const [filterCompany, setFilterCompany] = useState("");
 
     useEffect(() => {
         const fetchAppliedJDs = async () => {
@@ -98,7 +104,7 @@ const AllJDs = () => {
     const totalPages = Math.ceil(jdData.length / itemsPerPage);
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentCandidates = jdData.slice(indexOfFirstItem, indexOfLastItem);
+    // Removed duplicate declaration; use filteredCandidates below
 
     const handlePageChange = (page) => {
         if (page >= 1 && page <= totalPages) {
@@ -106,12 +112,53 @@ const AllJDs = () => {
         }
     };
 
-    const handleApplyClick = (candidate) => {
+    // Helper to get candidate info from localStorage
+    const getCandidateInfo = () => {
+        try {
+            const user = JSON.parse(localStorage.getItem("candidate"));
+            if (user) {
+                return {
+                    name: user.name || '',
+                    email: user.email || '',
+                    phone: user.phone || ''
+                };
+            }
+        } catch (e) {}
+        return { name: '', email: '', phone: '' };
+    };
+
+    const handleApplyClick = async (candidate) => {
         setSelectedJob(candidate);
-        // Save the selected JD to localStorage for use in assessment flow
         localStorage.setItem("selectedJD", JSON.stringify(candidate));
-        console.log("Saved selectedJD to localStorage:", candidate);
-        setShowModal(true);
+        // Set form fields from localStorage
+        const info = getCandidateInfo();
+        setFormData({
+            name: info.name,
+            email: info.email,
+            phone: info.phone,
+            reallocate: false
+        });
+        setLoading(true);
+        try {
+            const token = localStorage.getItem('candidateToken');
+            const response = await axios.get(`${baseUrl}/api/candidate/resume`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            if (response.data.success && response.data.resume) {
+                setExistingResume(response.data.resume);
+                setResumeChoiceModal(true);
+            } else {
+                setExistingResume(null);
+                setShowModal(true);
+            }
+        } catch (error) {
+            setExistingResume(null);
+            setShowModal(true);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleCloseModal = () => {
@@ -122,11 +169,25 @@ const AllJDs = () => {
     const handleApplyFromModal = () => {
         setShowModal(false);
         setShowApplicationForm(true);
+        setUseExistingResume(false);
+    };
+
+    const handleUseExistingResume = () => {
+        setResumeChoiceModal(false);
+        setShowApplicationForm(true);
+        setUseExistingResume(true);
+    };
+
+    const handleUploadNewResume = () => {
+        setResumeChoiceModal(false);
+        setShowApplicationForm(true);
+        setUseExistingResume(false);
     };
 
     const handleCloseApplicationForm = () => {
         setShowApplicationForm(false);
         setResume(null);
+        setUseExistingResume(false);
         setFormData({
             name: '',
             email: '',
@@ -141,26 +202,22 @@ const AllJDs = () => {
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
-
         if (name === 'phone') {
             const numericValue = value.replace(/[^0-9]/g, '');
-            setFormData(prev => ({
-                ...prev,
-                [name]: numericValue
-            }));
+            setFormData(prev => ({ ...prev, [name]: numericValue }));
             return;
         }
-
-        setFormData(prev => ({
-            ...prev,
-            [name]: type === 'checkbox' ? checked : value
-        }));
+        // Only phone and reallocate are editable
+        if (name === 'reallocate') {
+            setFormData(prev => ({ ...prev, [name]: checked }));
+        }
     };
 
     const handleSubmitApplication = async (e) => {
         e.preventDefault();
 
-        if (!resume) {
+
+        if (!useExistingResume && !resume) {
             alert('Please upload a resume');
             return;
         }
@@ -173,21 +230,17 @@ const AllJDs = () => {
         try {
             setSubmitting(true);
             const token = localStorage.getItem('candidateToken');
-
             const submitData = new FormData();
-            submitData.append('resume', resume);
+            if (useExistingResume && existingResume) {
+                submitData.append('useExistingResume', 'true');
+                submitData.append('existingResumeUrl', existingResume);
+            } else {
+                submitData.append('resume', resume);
+            }
             submitData.append('name', formData.name);
             submitData.append('email', formData.email);
             submitData.append('phone', formData.phone);
             submitData.append('reallocate', formData.reallocate ? 'yes' : 'no');
-
-            console.log('Applying to JD ID:', selectedJob._id);
-            console.log('Form Data:', {
-                name: formData.name,
-                email: formData.email,
-                phone: formData.phone,
-                reallocate: formData.reallocate
-            });
 
             const response = await axios.post(
                 `${baseUrl}/api/candidate/apply/${selectedJob._id}`,
@@ -200,20 +253,17 @@ const AllJDs = () => {
                 }
             );
 
-            console.log('Application Response:', response.data);
-
             if (response.data.success) {
-                // Add the newly applied job ID to the appliedJdIds state
                 setAppliedJdIds(prev => [...prev, selectedJob._id]);
                 setShowApplicationForm(false);
                 setShowCandidateModal(true);
                 alert('Application submitted successfully!');
+            } else {
+                alert(response.data.error || 'Application failed.');
             }
-
         } catch (error) {
-            console.error('Error submitting application:', error);
-            const errorMessage = "Please enter registered Email Id";
-            alert(errorMessage);
+            let msg = error?.response?.data?.error || error?.message || 'Application failed.';
+            alert(msg);
         } finally {
             setSubmitting(false);
         }
@@ -239,28 +289,66 @@ const AllJDs = () => {
         );
     }
 
+    // Filter and search logic
+    const uniqueLocations = Array.from(new Set(jdData.map(jd => jd.location))).filter(Boolean);
+    const uniqueCompanies = Array.from(new Set(jdData.map(jd => jd.company))).filter(Boolean);
+    const filteredCandidates = jdData.filter(jd => {
+        const matchesSearch = jd.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            jd.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            jd.skills.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesLocation = filterLocation ? jd.location === filterLocation : true;
+        const matchesCompany = filterCompany ? jd.company === filterCompany : true;
+        return matchesSearch && matchesLocation && matchesCompany;
+    });
+    const totalPagesFiltered = Math.ceil(filteredCandidates.length / itemsPerPage);
+    const currentCandidates = filteredCandidates.slice(indexOfFirstItem, indexOfLastItem);
+
     return (
         <div className="min-h-screen">
             <header>
-                <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <h1 className="text-2xl sm:text-3xl text-gray-900">Candidate</h1>
-
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-                        {/* <div className="relative flex-1 sm:flex-initial">
+                <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-4">
+                    <h1 className="text-2xl sm:text-3xl text-gray-900 font-bold">All Job Descriptions</h1>
+                    <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto items-stretch md:items-center">
+                        <div className="relative flex-1 md:flex-initial">
                             <input
                                 type="text"
-                                placeholder="Search by Candidate Name"
-                                className="w-full sm:w-64 pl-2 pr-12 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                                placeholder="Search by title, company, or skills"
+                                className="w-full md:w-64 pl-3 pr-12 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
                             />
-                            <button className="absolute right-0 top-0 h-full px-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors">
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
                                 <Search className="w-5 h-5" />
-                            </button>
+                            </span>
                         </div>
-
-                        <button className="flex items-center justify-center gap-2 px-4 py-2.5 bg-black text-white rounded-lg transition-colors hover:bg-gray-800">
-                            <SlidersHorizontal className="w-5 h-5" />
-                            <span className="font-medium">Filter</span>
-                        </button> */}
+                        <select
+                            value={filterLocation}
+                            onChange={e => setFilterLocation(e.target.value)}
+                            className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-700 bg-white shadow-sm"
+                        >
+                            <option value="">All Locations</option>
+                            {uniqueLocations.map(loc => (
+                                <option key={loc} value={loc}>{loc}</option>
+                            ))}
+                        </select>
+                        {/* <select
+                            value={filterCompany}
+                            onChange={e => setFilterCompany(e.target.value)}
+                            className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-700 bg-white shadow-sm"
+                        >
+                            <option value="">All Companies</option>
+                            {uniqueCompanies.map(comp => (
+                                <option key={comp} value={comp}>{comp}</option>
+                            ))}
+                        </select> */}
+                        {(filterLocation || filterCompany || searchTerm) && (
+                            <button
+                                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                                onClick={() => { setFilterLocation(""); setFilterCompany(""); setSearchTerm(""); }}
+                            >
+                                Clear
+                            </button>
+                        )}
                     </div>
                 </div>
             </header>
@@ -326,7 +414,47 @@ const AllJDs = () => {
                 )}
             </main>
 
-            {showModal && selectedJob && (
+            {resumeChoiceModal && selectedJob && existingResume && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-lg max-w-md w-full max-h-[90vh] overflow-y-auto relative">
+                        <button
+                            onClick={() => setResumeChoiceModal(false)}
+                            className="absolute top-3 right-3 text-gray-500 hover:text-black transition"
+                        >
+                            <X size={22} />
+                        </button>
+                        <div className="p-6 space-y-5">
+                            <h2 className="text-xl font-bold text-gray-900 mb-2">Resume Selection</h2>
+                            <div className="mb-4">
+                                <p className="text-gray-700">You already have a resume uploaded. Please choose an option:</p>
+                            </div>
+                            <div className="flex flex-col gap-4">
+                                <div className="border border-gray-200 rounded-lg p-4 flex flex-col items-center">
+                                    <span className="text-green-700 font-semibold">Use Existing Resume</span>
+                                    <a href={existingResume} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline mt-2">View Resume</a>
+                                    <button
+                                        className="mt-3 bg-black text-white px-6 py-2 rounded-lg hover:bg-gray-800 transition-colors font-medium"
+                                        onClick={handleUseExistingResume}
+                                    >
+                                        Use This Resume
+                                    </button>
+                                </div>
+                                <div className="border border-gray-200 rounded-lg p-4 flex flex-col items-center">
+                                    <span className="text-blue-700 font-semibold">Upload New Resume</span>
+                                    <button
+                                        className="mt-3 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-800 transition-colors font-medium"
+                                        onClick={handleUploadNewResume}
+                                    >
+                                        Upload New Resume
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showModal && selectedJob && !existingResume && (
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50 p-4">
                     <div className="bg-white rounded-2xl shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
                         <button
@@ -427,33 +555,44 @@ const AllJDs = () => {
                             </div>
 
                             <form onSubmit={handleSubmitApplication} className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Resume<span className="text-red-500">*</span>
-                                    </label>
-                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center text-center">
-                                        <Upload size={28} className="text-gray-400 mb-2" />
-                                        <label
-                                            htmlFor="resume"
-                                            className="bg-black text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-800 text-sm"
-                                        >
-                                            Upload a Resume
+                                {!useExistingResume && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Resume<span className="text-red-500">*</span>
                                         </label>
-                                        <p className="text-xs text-gray-500 mt-2">
-                                            PDF, DOC, DOCX up to 5MB
-                                        </p>
-                                        <input
-                                            id="resume"
-                                            type="file"
-                                            accept=".pdf,.doc,.docx"
-                                            onChange={handleFileChange}
-                                            className="hidden"
-                                        />
-                                        {resume && (
-                                            <p className="mt-2 text-sm text-green-600">{resume.name}</p>
-                                        )}
+                                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center text-center">
+                                            <Upload size={28} className="text-gray-400 mb-2" />
+                                            <label
+                                                htmlFor="resume"
+                                                className="bg-black text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-800 text-sm"
+                                            >
+                                                Upload a Resume
+                                            </label>
+                                            <p className="text-xs text-gray-500 mt-2">
+                                                PDF, DOC, DOCX up to 5MB
+                                            </p>
+                                            <input
+                                                id="resume"
+                                                type="file"
+                                                accept=".pdf,.doc,.docx"
+                                                onChange={handleFileChange}
+                                                className="hidden"
+                                            />
+                                            {resume && (
+                                                <p className="mt-2 text-sm text-green-600">{resume.name}</p>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
+                                {useExistingResume && existingResume && (
+                                    <div className="mb-4">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Resume</label>
+                                        <div className="border border-green-300 rounded-lg p-4 flex flex-col items-center">
+                                            <span className="text-green-700 font-semibold">Using Existing Resume</span>
+                                            <a href={existingResume} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline mt-2">View Resume</a>
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -463,9 +602,8 @@ const AllJDs = () => {
                                         type="text"
                                         name="name"
                                         value={formData.name}
-                                        onChange={handleInputChange}
-                                        placeholder="Enter your full name"
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-black focus:outline-none"
+                                        readOnly
+                                        className="w-full border border-gray-200 bg-gray-100 rounded-lg px-3 py-2 focus:outline-none cursor-not-allowed text-gray-500"
                                         required
                                     />
                                 </div>
@@ -478,9 +616,8 @@ const AllJDs = () => {
                                         type="email"
                                         name="email"
                                         value={formData.email}
-                                        onChange={handleInputChange}
-                                        placeholder="Enter your email"
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-black focus:outline-none"
+                                        readOnly
+                                        className="w-full border border-gray-200 bg-gray-100 rounded-lg px-3 py-2 focus:outline-none cursor-not-allowed text-gray-500"
                                         required
                                     />
                                 </div>
