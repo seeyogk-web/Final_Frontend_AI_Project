@@ -4,7 +4,6 @@ import {
   Home,
   UserPlus,
   Building2,
-  LogOut,
   X
 } from 'lucide-react';
 
@@ -30,11 +29,6 @@ const CandidateAdminSidebar = ({ isOpen, onToggle }) => {
     navigate(path);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('candidateToken');
-    localStorage.removeItem('candidate');
-    navigate('/Candidatelogin');
-  };
 
   return (
     <>
@@ -122,16 +116,6 @@ const CandidateAdminSidebar = ({ isOpen, onToggle }) => {
             </li>
 
 
-            <li>
-              <button
-                onClick={handleLogout}
-                className={`flex w-full items-center space-x-3 py-2 px-7 rounded transition-colors 
-                  ${activeNav === 'Logout' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
-              >
-                <LogOut size={20} />
-                <span>Logout</span>
-              </button>
-            </li>
 
           </ul>
         </nav>

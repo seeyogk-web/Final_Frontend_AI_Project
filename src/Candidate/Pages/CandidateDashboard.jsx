@@ -28,7 +28,10 @@ const CandidateDashboard = () => {
     const [currentDate, setCurrentDate] = useState("");
     
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 3;
+    const itemsPerPage = 2;
+
+      const [currentPageLatest, setCurrentPageLatest] = useState(1);
+    const itemsPerPageLatest = 2;
 
     const ranges = ["1 Day", "1 Month", "1 Year", "Max"];
 
@@ -127,6 +130,17 @@ const CandidateDashboard = () => {
     const handlePageChange = (page) => {
         if (page >= 1 && page <= totalPages) {
             setCurrentPage(page);
+        }
+    };
+
+     const totalPagesLatest = Math.ceil(latestJobs.length / itemsPerPageLatest);
+    const indexOfLastItemLatest = currentPageLatest * itemsPerPageLatest;
+    const indexOfFirstItemLatest = indexOfLastItemLatest - itemsPerPageLatest;
+    const latestJobsLatest = latestJobs.slice(indexOfFirstItemLatest, indexOfLastItemLatest);
+
+    const handlePageChangeLatest = (page) => {
+        if (page >= 1 && page <= totalPagesLatest) {
+            setCurrentPageLatest(page);
         }
     };
 
@@ -360,20 +374,20 @@ const CandidateDashboard = () => {
                         {currentApplications.length > 0 ? currentApplications.map((job, i) => (
                             <div
                                 key={job._id || i}
-                                className="flex justify-between items-center mb-4 border-b border-gray-100 pb-4 last:border-0 shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-2 rounded-2xl"
+                                className="flex justify-between  items-center mb-4 border-b border-gray-100 pb-4 last:border-0 shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-2 rounded-xl"
                             >
                                 <div className="flex items-center space-x-4">
-                                    <img
+                                    {/* <img
                                         src="https://assets.streamlinehq.com/image/private/w_300,h_300,ar_1/f_auto/v1/icons/5/udemy-icon-3j6wakwfpzle3lk48gsyn.png/udemy-icon-1o4mdttoaqgp1qaghk9f7.png?_a=DATAg1AAZAA0"
                                         alt="Company Logo"
                                         className="w-12 h-12 shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-1 rounded-2xl"
-                                    />
+                                    /> */}
                                     <div className="">
                                         <h3 className="font-medium text-gray-800">{job.department || "Position"}</h3>
-                                        <p className="text-sm text-gray-500">
+                                        <p className="text-sm text-gray-500 mr-4 mb-4">
                                             {job.companyName} • {job.benefits?.[2] || "On-Site"}
                                         </p>
-                                        <p className="text-sm text-gray-400">{job.additionalInfo?.split('.')[0] || "Location"}</p>
+                                        <p className="text-sm text-gray-500 mr-4">{job.additionalInfo?.split('.')[0] || "Location"}</p>
                                     </div>
                                 </div>
                                 <p className="font-medium">{job.benefits?.[0] || "Competitive Salary"}</p>
@@ -471,17 +485,17 @@ const CandidateDashboard = () => {
                     </div>
 
                     <div className="space-y-4 shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-4 rounded-xl min-w-[500px]">
-                        {latestJobs.length > 0 ? latestJobs.map((job) => (
+                        {latestJobsLatest.length > 0 ? latestJobsLatest.map((job) => (
                             <div
                                 key={job._id}
                                 className="flex justify-between items-center border-b pb-3 last:border-none"
                             >
                                 <div className="flex items-center space-x-4">
-                                    <img
+                                    {/* <img
                                         src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSW4qIERoyjk6oTJte3pRofI1CZWOEFK-0FIQ&s"
                                         alt="Company Logo"
                                         className="w-12 h-12 p-1 rounded-full shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)]"
-                                    />
+                                    /> */}
                                     <div>
                                         <h3 className="font-semibold text-gray-800 text-lg">
                                             {job.department || "Developer"}
@@ -503,8 +517,9 @@ const CandidateDashboard = () => {
                                             </p>
                                         </div>
                                     </div>
+                                    
                                 </div>
-
+                                                    
                                 <div className="flex items-center space-x-3">
                                     <button onClick={() => navigate("/Candidate-Dashboard/Alljds")} className="border border-green-500 text-green-600 px-4 py-1.5 rounded-full hover:bg-green-50 transition">
                                         Apply Now
@@ -517,6 +532,13 @@ const CandidateDashboard = () => {
                             </div>
                         )}
                     </div>
+                     {latestJobs.length > itemsPerPage && (
+                        <Pagination
+                            currentPage={currentPageLatest}
+                            totalPages={totalPagesLatest}
+                            onPageChange={handlePageChangeLatest}
+                        />
+                    )}
                 </div>
 
                 <div className="bg-white p-5 rounded-xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)]">
