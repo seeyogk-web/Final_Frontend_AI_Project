@@ -606,7 +606,7 @@ function Report() {
     if (!ok) return;
     try {
       const base = window.REACT_APP_BASE_URL || `${baseUrl}`;
-      const res = await fetch(`${base}/api/v1/test/attempts/${encodeURIComponent(attempt.id)}`, { method: 'DELETE' });
+      const res = await fetch('https://python-k0xt.onrender.com/api/v1/test/attempts/${encodeURIComponent(attempt.id)}', { method: 'DELETE' });
       if (!res.ok) {
         const txt = await res.text();
         alert('Delete failed: ' + txt);
@@ -636,7 +636,7 @@ function Report() {
     }
     const restrictToLoggedCandidate = Boolean(loggedCid);
     try {
-      const res = await fetch('http://localhost:5000/api/v1/test/attempts');
+      const res = await fetch('https://python-k0xt.onrender.com/api/v1/test/attempts');
       if (!res.ok) {
         const txt = await res.text().catch(() => 'Failed');
         throw new Error(txt || 'Failed loading attempts');
@@ -748,7 +748,7 @@ function Report() {
             try {
               const qset = m.raw?.question_set_id || m.raw?.questionSetId || m.raw?.question_setId || null;
               if (qset) {
-                const API_ROOT = (window.REACT_APP_BASE_URL || 'http://localhost:5000').replace(/\/$/, '') + '/api/v1';
+                const API_ROOT = (window.REACT_APP_BASE_URL || 'https://python-k0xt.onrender.com').replace(/\/$/, '') + '/api/v1';
                 try {
                   const ar = await fetch(`${API_ROOT}/question-set/${encodeURIComponent(qset)}/assessment`);
                   if (ar.ok) {

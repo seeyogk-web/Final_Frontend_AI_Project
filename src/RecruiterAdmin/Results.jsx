@@ -55,7 +55,7 @@ function Results() {
     setLoading(true);
     try {
       const base = window.REACT_APP_BASE_URL || 'http://localhost:5000';
-      const res = await fetch(`${base}/api/v1/finalise/finalized-tests`);
+      const res = await fetch('https://python-k0xt.onrender.com/api/v1/finalise/finalized-tests');
       if (!res.ok) {
         const txt = await res.text().catch(() => 'Failed');
         throw new Error(txt || 'Failed loading finalized tests');
