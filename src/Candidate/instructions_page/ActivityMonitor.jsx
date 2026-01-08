@@ -91,7 +91,30 @@ const ActivityMonitor = ({
 
   useEffect(() => {
     if (faceEventRef) {
-      faceEventRef.current = () => bump("face_not_visible");
+      // Accept structured face events from FaceDetection
+      faceEventRef.current = (event) => {
+        if (!event) {
+          // backward-compatible: treat empty call as face not visible
+          bump("face_not_visible");
+          return;
+        }
+
+        if (event.type === "no_face") {
+          bump("face_not_visible");
+          return;
+        }
+
+        if (event.type === "multiple_faces") {
+          // forward multi-face event to parent (do not increment the standard violation counters)
+          if (onViolation) onViolation("multiple_faces", event.count || 1);
+          return;
+        }
+
+        if (event.type === "single_face") {
+          if (onViolation) onViolation("single_face", 1);
+          return;
+        }
+      };
     }
   }, [faceEventRef, bump]);
 

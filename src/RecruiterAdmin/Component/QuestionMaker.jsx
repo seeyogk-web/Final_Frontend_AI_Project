@@ -9,12 +9,18 @@ export default function QuestionMaker({ questions, onUpdate, onNext, onBack, loa
     const displayQuestions = questions.map((q, idx) => {
         const content = q.content || {};
         if (q.type === 'mcq') {
+            // Prefer various places where correct answer may be provided
+            const correctAnswerRaw = q.correct_answer || content.correct_answer || content.answer || q.correctAnswer || null;
+            // derive correct option text if available on top-level (from GenerateAssessment normalization)
+            const correctOptionText = q.correct_option_text || null;
+
             return {
                 id: idx + 1,
                 question_id: q.question_id,
                 text: content.prompt || content.question || '',
                 options: content.options || [],
-                correctAnswer: content.answer || '',
+                correctAnswer: correctAnswerRaw || '',
+                correctOptionText: correctOptionText,
                 explanation: content.explanation || 'No explanation provided',
                 tags: [q.skill],
                 skills: [q.skill],
@@ -208,6 +214,8 @@ export default function QuestionMaker({ questions, onUpdate, onNext, onBack, loa
         const updatedQuestion = questions.find(q => q.question_id === editingQuestion.question_id);
         
         if (!updatedQuestion) return;
+        // Ensure content object exists before assigning
+        updatedQuestion.content = updatedQuestion.content || {};
 
         if (editedData.questionType === 'MCQ') {
             updatedQuestion.time_limit = parseInt(editedData.timeLimit);
@@ -217,7 +225,15 @@ export default function QuestionMaker({ questions, onUpdate, onNext, onBack, loa
             updatedQuestion.content.options = editedData.options.map(opt => opt.text);
             
             const correctOption = editedData.options.find(opt => opt.isCorrect);
-            updatedQuestion.content.answer = correctOption ? correctOption.id : 'A';
+            const correctId = correctOption ? correctOption.id : 'A';
+            const correctText = correctOption ? correctOption.text : '';
+            updatedQuestion.content.answer = correctId;
+            // keep both naming variants for compatibility:
+            updatedQuestion.content.correct_answer = correctId;
+            updatedQuestion.content.correct_option_text = correctText;
+            // also store top-level fields for downstream components and persistence
+            updatedQuestion.correct_answer = correctId;
+            updatedQuestion.correct_option_text = correctText;
         } else if (editedData.questionType === 'Coding') {
             updatedQuestion.time_limit = parseInt(editedData.timeLimit);
             updatedQuestion.positive_marking = parseInt(editedData.marks);
@@ -370,8 +386,16 @@ export default function QuestionMaker({ questions, onUpdate, onNext, onBack, loa
                                                 <div className="space-y-2 mb-4">
                                                     {question.options.map((option, idx) => {
                                                         const optionText = typeof option === 'string' ? option : option;
-                                                        const isCorrect = question.correctAnswer === String.fromCharCode(65 + idx) ||
-                                                                        question.correctAnswer === optionText;
+                                                        // Determine correctness by multiple fallbacks:
+                                                        // - letter match (A/B/C)
+                                                        // - option text match
+                                                        // - top-level correctOptionText match
+                                                        const letter = String.fromCharCode(65 + idx);
+                                                        const isCorrect = (
+                                                            (question.correctAnswer && String(question.correctAnswer).toString().trim().toUpperCase() === letter) ||
+                                                            (question.correctAnswer && question.correctAnswer === optionText) ||
+                                                            (question.correctOptionText && question.correctOptionText === optionText)
+                                                        );
                                                         
                                                         return (
                                                             <div 
@@ -399,6 +423,12 @@ export default function QuestionMaker({ questions, onUpdate, onNext, onBack, loa
                                                         <p className="text-xs sm:text-sm text-gray-700">
                                                             <span className="font-semibold">Explanation:</span> {question.explanation}
                                                         </p>
+                                                    </div>
+                                                )}
+                                                {/* Show explicit correct answer label when available */}
+                                                {question.correctOptionText && (
+                                                    <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-sm text-green-800">
+                                                        <strong>Correct Answer:</strong> {question.correctAnswer ? `${question.correctAnswer}. ` : ''}{question.correctOptionText}
                                                     </div>
                                                 )}
                                             </>

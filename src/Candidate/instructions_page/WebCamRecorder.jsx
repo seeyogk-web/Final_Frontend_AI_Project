@@ -12,7 +12,7 @@ const WebCamRecorder = forwardRef(
       questions = [],
       candidateId,
       questionSetId,
-      baseUrl = "http://127.0.0.1:5000",
+      baseUrl = "https://python-k0xt.onrender.com",
       onComplete = () => {},
     },
     ref

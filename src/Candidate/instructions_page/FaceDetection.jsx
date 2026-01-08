@@ -25,10 +25,25 @@ const FaceDetection = ({ faceEventRef, submitted }) => {
         try {
           const faces = await modelRef.current.estimateFaces(video, false);
 
-          if (!faces.length) {
+          // Multiple faces detected -> notify immediately
+          if (faces && faces.length > 1) {
+            faceEventRef?.current?.({ type: "multiple_faces", count: faces.length });
+            missCount = 0;
+            return;
+          }
+
+          // Single face detected -> clear any multi-face state
+          if (faces && faces.length === 1) {
+            missCount = 0;
+            faceEventRef?.current?.({ type: "single_face" });
+            return;
+          }
+
+          // No faces: respect the missCount threshold (existing behaviour)
+          if (!faces || !faces.length) {
             missCount++;
             if (missCount >= 2) {
-              faceEventRef?.current?.();
+              faceEventRef?.current?.({ type: "no_face" });
               missCount = 0;
             }
           } else {

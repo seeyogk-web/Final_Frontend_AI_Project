@@ -19,12 +19,17 @@ export default function ReviewFinalise({ formData, questions, onFinalize, onBack
     const content = q.content || {};
     
     if (q.type === 'mcq') {
+      // prefer correct answer info from normalized question (top-level) or content
+      const correctAnswerRaw = q.correct_answer || content.correct_answer || content.answer || q.correctAnswer || null;
+      const correctOptionText = q.correct_option_text || null;
+
       return {
         id: idx + 1,
         question_id: q.question_id,
         text: content.prompt || content.question || '',
         options: content.options || [],
-        correctAnswer: content.answer || '',
+        correctAnswer: correctAnswerRaw || '',
+        correctOptionText: correctOptionText,
         explanation: content.explanation || 'No explanation provided',
         tags: [q.skill],
         skills: [q.skill],
@@ -269,21 +274,6 @@ export default function ReviewFinalise({ formData, questions, onFinalize, onBack
           <p className="text-sm text-gray-600">
             Review all test details and questions below. Click "Finalize" to save and publish the test.
           </p>
-        </div>
-      </div>
-
-      {/* Error Display */}
-      {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-800 text-sm">{error}</p>
-        </div>
-      )}
-
-      {/* Test Summary Cards */}
-      <div className="mb-6 border border-gray-300 shadow-md rounded-xl p-4">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Test Summary</h2>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
           <div className="bg-white border border-gray-300 shadow-md rounded-xl p-4">
             <div className="text-sm font-medium text-gray-600 mb-1">Total Questions</div>
             <div className="text-3xl font-bold text-blue-500">{totalQuestions}</div>

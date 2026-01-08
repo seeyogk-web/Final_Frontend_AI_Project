@@ -72,11 +72,30 @@ function GenerateAssessment() {
     const defaultNegative = q.negative_marking ?? 0;
     const defaultTime = q.time_limit ?? (type === 'coding' ? 300 : type === 'audio' ? 120 : type === 'video' ? 180 : 60);
 
+    // expose MCQ correct answer if provided in payload (keep original keys too)
+    const correctAnswerRaw = q.content?.correct_answer ?? q.correct_answer ?? q.correctAnswer ?? null;
+    let correctOptionText = null;
+    try {
+      if (correctAnswerRaw && Array.isArray(q.content?.options) && typeof correctAnswerRaw === 'string') {
+        const letter = correctAnswerRaw.trim().toUpperCase().charAt(0);
+        const idx = letter.charCodeAt(0) - 65;
+        if (idx >= 0 && idx < q.content.options.length) {
+          correctOptionText = q.content.options[idx];
+        } else {
+          // fallback: try to find an option that starts with the letter (e.g., "C.")
+          const found = q.content.options.find(opt => typeof opt === 'string' && opt.trim().startsWith(letter + '.'));
+          if (found) correctOptionText = found;
+        }
+      }
+    } catch (e) {}
+
     return {
       ...q,
       positive_marking: defaultPositive,
       negative_marking: defaultNegative,
       time_limit: defaultTime,
+      correct_answer: correctAnswerRaw,
+      correct_option_text: correctOptionText,
     };
   };
 

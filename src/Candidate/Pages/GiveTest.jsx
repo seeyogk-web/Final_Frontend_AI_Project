@@ -74,6 +74,7 @@ const GiveTest = ({ jdId }) => {
     inactivities: 0,
     face_not_visible: 0,
   });
+  const [showMultipleFaces, setShowMultipleFaces] = useState(false);
   const violationsRef = useRef(violations);
   // Track which toast alerts have already been shown to avoid duplicates
   const shownToastsRef = useRef(new Set());
@@ -470,15 +471,52 @@ const GiveTest = ({ jdId }) => {
         setTabSwitches(prev => {
           const next = prev + 1;
           try { handleViolation('tab_switches', 1); } catch (e) {}
-          if (next > 3) {
+
+          // First switch: warning only is handled by handleViolation (avoid duplicate toasts here).
+
+          if (next >= 2) {
             toast.error('Too many tab switches — submitting the test.');
             // disable monitoring/UI immediately and force-finalize the test
             try {
               setTestStarted(false);
-              // call forced submit which will include mark_complete so backend records candidate_test_taken
-              handleSubmitAllSections(undefined, { markComplete: true }).catch(e => console.warn('forced submit failed', e));
+
+              // Capture current answers and persist them so partial results can be reviewed later
+              const answersToSubmit = { ...(allAnswers || {}) };
+              try {
+                const key = `partialAnswers_${questionSetId}_${finalCandidateId}`;
+                sessionStorage.setItem(key, JSON.stringify(answersToSubmit));
+              } catch (e) {
+                // ignore storage failures
+              }
+
+              // Basic local MCQ evaluation for immediate feedback (optional).
+              try {
+                let mcqAnswered = 0, mcqCorrect = 0;
+                for (let sIdx = 0; sIdx < (sections || []).length; sIdx++) {
+                  const s = sections[sIdx];
+                  if (!s || !s.questions) continue;
+                  for (let qIdx = 0; qIdx < s.questions.length; qIdx++) {
+                    const q = s.questions[qIdx];
+                    const ans = answersToSubmit[q.id];
+                    if (q.type === 'mcq' && ans !== undefined && ans !== '') {
+                      mcqAnswered++;
+                      const correct = q.correct_answer || q.content?.correct_answer;
+                      if (correct != null && String(ans) === String(correct)) mcqCorrect++;
+                    }
+                  }
+                }
+                if (mcqAnswered) {
+                  toast.info(`Auto-submitted partial test: MCQ ${mcqCorrect}/${mcqAnswered} marked answers submitted.`);
+                }
+              } catch (e) {
+                // ignore local eval errors
+              }
+
+              // call forced submit with the answers captured so backend can evaluate up to this point
+              handleSubmitAllSections(answersToSubmit, { markComplete: true }).catch(e => console.warn('forced submit failed', e));
             } catch (e) { console.warn('submit failed', e); }
           }
+
           return next;
         });
       }
@@ -486,7 +524,7 @@ const GiveTest = ({ jdId }) => {
 
     document.addEventListener('visibilitychange', onVisibility);
     return () => document.removeEventListener('visibilitychange', onVisibility);
-  }, [testStarted, submitted]);
+  }, [testStarted, submitted, allAnswers, sections]);
 
   // Consolidated debug logger for component state — use DevTools or button below
   const logDebugState = () => {
@@ -783,6 +821,8 @@ const GiveTest = ({ jdId }) => {
 
         // 3. Disable further tab/inactivity/face violations
         setTestStarted(false);
+        // clear any multi-face UI state
+        try { setShowMultipleFaces(false); } catch (e) {}
       } catch (err) {
         console.warn("Failed to cleanup after submit:", err);
       }
@@ -824,8 +864,44 @@ const GiveTest = ({ jdId }) => {
 
   // ActivityMonitor -> onViolation handler
   const handleViolation = (key, count = 1, flush = false) => {
-    if (!['tab_switches', 'inactivities', 'face_not_visible'].includes(key)) return;
+    // Accept additional keys: multiple_faces, single_face
     if (submitted) return;
+
+    if (key === 'multiple_faces') {
+      // visually blur the page while multiple faces are present
+      setShowMultipleFaces(true);
+      // Ensure only a single alert is shown: dismiss any existing toasts,
+      // then show one and mark it as shown until cleared by single_face.
+      try { toast.dismiss(); } catch (e) {}
+      if (!shownToastsRef.current.has('multiple_faces')) {
+        toast.warning('🚨 Multiple faces detected — page blurred');
+        shownToastsRef.current.add('multiple_faces');
+        // also mark face_not_visible to avoid duplicate face alerts
+        shownToastsRef.current.add('face_not_visible');
+      }
+      try {
+        emitViolation({
+          exam_id: jdId,
+          question_set_id: questionSetId,
+          candidate_email: userInfo.email,
+          candidate_name: userInfo.name,
+          multiple_faces: count || 1,
+        });
+      } catch (e) {
+        console.warn('emitViolation failed', e);
+      }
+      return;
+    }
+
+    if (key === 'single_face') {
+      setShowMultipleFaces(false);
+      // clear the multiple_faces shown marker so future multi-face events can alert again
+      try { shownToastsRef.current.delete('multiple_faces'); } catch (e) {}
+      try { toast.dismiss(); } catch (e) {}
+      return;
+    }
+
+    if (!['tab_switches', 'inactivities', 'face_not_visible'].includes(key)) return;
 
     setViolations(prev => {
       const updated = flush
@@ -834,7 +910,6 @@ const GiveTest = ({ jdId }) => {
 
       // show toasts based on violation type
       if (!submitted) {
-        // Only show each toast once per test session
         if (!shownToastsRef.current.has(key)) {
           if (key === 'tab_switches') toast.warning('⚠️ Tab switch detected!');
           if (key === 'inactivities') toast.info('⌛ You have been inactive.');
@@ -1024,6 +1099,12 @@ const GiveTest = ({ jdId }) => {
         pauseOnHover
       />
 
+      {showMultipleFaces && (
+        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 bg-yellow-400 text-black px-4 py-2 rounded shadow">
+          🚨 Multiple faces detected — page blurred
+        </div>
+      )}
+
       {/* Hidden monitoring components */}
       <ActivityMonitor
         questionSetId={questionSetId}
@@ -1075,7 +1156,7 @@ const GiveTest = ({ jdId }) => {
         />
       )}
       
-      <div className="min-h-screen bg-gray-100 py-8">
+      <div className={`min-h-screen bg-gray-100 py-8 ${showMultipleFaces ? 'filter blur-sm' : ''}`}>
         <div className="max-w-4xl mx-auto px-4">
           {/* Section Header */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -1319,6 +1400,17 @@ const GiveTest = ({ jdId }) => {
                 {/* For non-video sections show global Next */}
                 <button
                   onClick={() => {
+                    // If MCQ or Coding is the last section and we're on its last question, submit the test
+                    if (
+                      (currentSection?.type === 'mcq' || currentSection?.type === 'coding') &&
+                      currentQuestionIndex === totalQuestionsInSection - 1 &&
+                      currentSectionIndex === sections.length - 1
+                    ) {
+                      if (submitting) return;
+                      handleSubmitAllSections().catch(e => console.warn('Submit failed', e));
+                      return;
+                    }
+
                     const hasVideoSection = sections.some(s => s.type === "video");
 
                     // Prevent skipping the video interview ONLY inside the Video section
@@ -1332,15 +1424,22 @@ const GiveTest = ({ jdId }) => {
                       return;
                     }
 
-                    // For audio sections, the interview UI handles all questions.
-                    // Clicking Next should immediately move to the next section.
+                    // For audio sections, the interview UI handles answers.
+                    // If this is NOT the last section, move to next. If it IS the last section,
+                    // submit only after the audio interview is completed.
                     if (currentSection?.type === 'audio') {
                       if (currentSectionIndex < sections.length - 1) {
                         setCompletedSections(prev => new Set([...prev, currentSectionIndex]));
                         setCurrentSectionIndex(prev => prev + 1);
                         setCurrentQuestionIndex(0);
                       } else {
-                        toast.info('Please complete the section actions to finish the test.');
+                        // last section
+                        if (audioInterviewDone) {
+                          if (submitting) return;
+                          handleSubmitAllSections().catch(e => console.warn('Submit failed', e));
+                        } else {
+                          toast.info('Please complete the audio interview to finish the test.');
+                        }
                       }
                       return;
                     }
@@ -1354,7 +1453,12 @@ const GiveTest = ({ jdId }) => {
                 {submitting
                   ? 'Submitting...'
                   : currentSection?.type === 'audio'
-                  ? (audioInterviewVisited ? 'Go To Next Part' : 'Visit Audio Interview')
+                  ? (currentSectionIndex === sections.length - 1
+                      ? (audioInterviewDone ? 'Submit Test' : (audioInterviewVisited ? 'Visit Audio Interview' : 'Visit Audio Interview'))
+                      : (audioInterviewVisited ? 'Go To Next Part' : 'Visit Audio Interview')
+                    )
+                  : ((currentSection?.type === 'mcq' || currentSection?.type === 'coding') && currentQuestionIndex === totalQuestionsInSection - 1 && currentSectionIndex === sections.length - 1)
+                  ? 'Submit Test'
                   : currentQuestionIndex === totalQuestionsInSection - 1
                   ? 'Proceed to Next Section'
                   : 'Next'}
