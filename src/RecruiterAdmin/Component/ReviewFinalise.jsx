@@ -262,6 +262,150 @@ export default function ReviewFinalise({ formData, questions, onFinalize, onBack
     }
   };
 
+  // Generate and download a PDF directly using html2canvas + jsPDF (dynamic import)
+  const handleDownload = async () => {
+    // Build printable HTML content (body only)
+    const title = formData.test_title || formData.title || formData.role_title || 'Assessment';
+    const company = formData.company || (formData.jobDetails && (formData.jobDetails.companyName || formData.jobDetails.offerId?.company)) || '';
+    const jobId = formData.job_id || formData.jobId || formData.jobDetails?._id || '';
+
+    const headerHtml = `
+      <div style="padding:20px;border-bottom:1px solid #e5e7eb;margin-bottom:20px;">
+        <h1 style="margin:0;font-size:26px;font-family:Arial,Helvetica,sans-serif;color:#0f172a">${escapeHtml(title)}</h1>
+        ${company ? `<div style="margin-top:6px;color:#475569;font-family:Arial,Helvetica,sans-serif">${escapeHtml(company)}</div>` : ''}
+        ${jobId ? `<div style="margin-top:4px;color:#64748b;font-family:Arial,Helvetica,sans-serif">Job ID: ${escapeHtml(jobId)}</div>` : ''}
+      </div>`;
+
+    const summaryHtml = `
+      <div style="margin-bottom:18px;font-family:Arial,Helvetica,sans-serif;color:#0f172a">
+        <h2 style="font-size:18px;margin:0 0 8px 0">Summary</h2>
+        <ul style="margin:0;padding-left:18px;color:#334155">
+          <li>Total Questions: ${totalQuestions}</li>
+          <li>Total Marks: ${totalMarks}</li>
+          <li>Duration (mins): ${totalTime}</li>
+          <li>Skills: ${escapeHtml(skills.map(s => s.name).join(', ') || 'None')}</li>
+        </ul>
+      </div>`;
+
+    const questionBlocks = displayQuestions.map((q) => {
+      const qHeader = `<div style="margin-top:12px;margin-bottom:8px;font-family:Arial,Helvetica,sans-serif"><strong style="font-size:15px">Q${q.id} — ${escapeHtml(q.questionType)}</strong> ${q.skill ? `<span style=\"margin-left:8px;color:#0ea5a4;font-weight:600\">${escapeHtml(q.skill)}</span>` : ''}</div>`;
+      const qMeta = `<div style="color:#475569;font-family:Arial,Helvetica,sans-serif;margin-bottom:8px">Marks: <strong>${q.marks || 0}</strong> &nbsp; Time(s): <strong>${q.time || 0}</strong></div>`;
+      const qText = `<div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;margin-bottom:8px">${escapeHtml(q.text || '')}</div>`;
+
+      let optionsHtml = '';
+      if (q.questionType === 'MCQ' && Array.isArray(q.options)) {
+        optionsHtml = '<div style="margin-bottom:8px"><ol style="padding-left:18px;color:#0f172a">';
+        q.options.forEach((opt, idx) => {
+          const label = String.fromCharCode(65 + idx);
+          const optText = escapeHtml(typeof opt === 'string' ? opt : String(opt));
+          const isCorrect = q.correctAnswer === label || q.correctAnswer === optText || q.correctOptionText === optText;
+          optionsHtml += `<li style="margin-bottom:6px;">${optText}${isCorrect ? ' <span style=\"color:#059669;font-weight:700\">✓</span>' : ''}</li>`;
+        });
+        optionsHtml += '</ol></div>';
+        if (q.explanation) optionsHtml += `<div style="background:#f1f5f9;padding:10px;border-radius:6px;color:#0f172a;margin-bottom:8px">Explanation: ${escapeHtml(q.explanation)}</div>`;
+      }
+
+      let extra = '';
+      if (q.questionType === 'Coding') {
+        if (q.input_spec) extra += `<div><strong>Input Spec:</strong> ${escapeHtml(q.input_spec)}</div>`;
+        if (q.output_spec) extra += `<div><strong>Output Spec:</strong> ${escapeHtml(q.output_spec)}</div>`;
+        if (q.examples && q.examples.length) extra += `<div><strong>Examples:</strong><ul>${q.examples.map(e => `<li>${escapeHtml(String(e))}</li>`).join('')}</ul></div>`;
+      }
+      if (q.questionType === 'Audio' && q.expected_keywords && q.expected_keywords.length) extra += `<div><strong>Expected Keywords:</strong> ${escapeHtml(q.expected_keywords.join(', '))}</div>`;
+      if (q.rubric) extra += `<div style="margin-top:6px"><strong>Rubric:</strong> ${escapeHtml(q.rubric)}</div>`;
+
+      return `<div style="margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid #e6eef6">${qHeader}${qMeta}${qText}${optionsHtml}${extra}</div>`;
+    }).join('');
+
+    const footer = `<div style="font-family:Arial,Helvetica,sans-serif;color:#94a3b8;margin-top:20px">Generated: ${escapeHtml(new Date().toLocaleString())}</div>`;
+
+    const bodyHtml = `${headerHtml}${summaryHtml}${questionBlocks}${footer}`;
+
+    try {
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')]);
+
+      // Create an offscreen container with a fixed width for consistent rendering
+      const container = document.createElement('div');
+      container.style.width = '800px';
+      container.style.padding = '24px';
+      container.style.background = '#ffffff';
+      container.style.color = '#0f172a';
+      container.style.position = 'fixed';
+      container.style.left = '-9999px';
+      container.innerHTML = bodyHtml;
+      document.body.appendChild(container);
+
+      // Render canvas at higher scale for better quality
+      const canvas = await html2canvas(container, { scale: 2, useCORS: true });
+      const imgData = canvas.toDataURL('image/png', 1.0);
+
+      const pdf = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      const imgProps = pdf.getImageProperties(imgData);
+      const imgWidth = pdfWidth;
+      const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+
+      if (imgHeight <= pdfHeight) {
+        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      } else {
+        // Paginate by slicing the canvas vertically
+        const pageCanvas = document.createElement('canvas');
+        const ctx = pageCanvas.getContext('2d');
+        const ratio = canvas.width / imgWidth;
+        const sliceHeightPx = Math.floor(pdfHeight * ratio);
+        let y = 0;
+        while (y < canvas.height) {
+          const h = Math.min(sliceHeightPx, canvas.height - y);
+          pageCanvas.width = canvas.width;
+          pageCanvas.height = h;
+          ctx.clearRect(0, 0, pageCanvas.width, pageCanvas.height);
+          ctx.drawImage(canvas, 0, y, canvas.width, h, 0, 0, pageCanvas.width, pageCanvas.height);
+          const pageData = pageCanvas.toDataURL('image/png', 1.0);
+          const pageImgProps = pdf.getImageProperties(pageData);
+          const pageImgHeight = (pageImgProps.height * imgWidth) / pageImgProps.width;
+          pdf.addImage(pageData, 'PNG', 0, 0, imgWidth, pageImgHeight);
+          y += h;
+          if (y < canvas.height) pdf.addPage();
+        }
+      }
+
+      const safeName = (title || 'assessment').replace(/[^a-z0-9-_]/gi, '_').toLowerCase();
+      pdf.save(`${safeName}_review_${Date.now()}.pdf`);
+
+      document.body.removeChild(container);
+      return;
+    } catch (err) {
+      console.warn('html2canvas/jsPDF not available or failed, falling back to print dialog', err);
+    }
+
+    // Fallback to printable window (user can Save as PDF)
+    try {
+      const fullHtml = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title></head><body style="padding:24px;color:#0f172a">${bodyHtml}</body></html>`;
+      const w = window.open('', '_blank');
+      if (!w) throw new Error('Popup blocked');
+      w.document.open();
+      w.document.write(fullHtml);
+      w.document.close();
+      setTimeout(() => { try { w.focus(); w.print(); } catch (e) { console.warn('print failed', e); } }, 600);
+    } catch (e) {
+      console.error('Download failed', e);
+      setError('Failed to prepare printable PDF.');
+    }
+  };
+
+  // Helper to escape HTML
+  function escapeHtml(str) {
+    if (!str && str !== 0) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
   const isLoading = loading || localLoading;
 
   return (
@@ -531,23 +675,34 @@ export default function ReviewFinalise({ formData, questions, onFinalize, onBack
         >
           Back
         </button>
-        <button
-          onClick={handleFinalize}
-          disabled={isLoading || displayQuestions.length === 0}
-          className="px-8 py-3 bg-[#0496FF] text-white rounded-lg hover:bg-blue-600 font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-        >
-          {isLoading ? (
-            <>
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-              Finalizing...
-            </>
-          ) : (
-            <>
-              <CheckCircle size={20} />
-              Finalize & Publish Test
-            </>
-          )}
-        </button>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleDownload}
+            disabled={isLoading || displayQuestions.length === 0}
+            className="px-8 py-3 bg-[#0496FF] text-white rounded-lg hover:bg-blue-600 font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            Download PDF
+          </button>
+
+          <button
+            onClick={handleFinalize}
+            disabled={isLoading || displayQuestions.length === 0}
+            className="px-8 py-3 bg-[#0496FF] text-white rounded-lg hover:bg-blue-600 font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {isLoading ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                Finalizing...
+              </>
+            ) : (
+              <>
+                <CheckCircle size={20} />
+                Finalize & Publish Test
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

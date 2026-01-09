@@ -14,6 +14,7 @@ const WebCamRecorder = forwardRef(
       questionSetId,
       baseUrl = "https://python-k0xt.onrender.com",
       onComplete = () => {},
+      showMultipleFaces = false,
     },
     ref
   ) => {
@@ -203,7 +204,7 @@ const WebCamRecorder = forwardRef(
       setStatus("Uploading video...");
 
       try {
-        const res = await fetch(`${baseUrl}/api/v1/upload_video`, {
+        const res = await fetch(`https://python-k0xt.onrender.com/api/v1/upload_video`, {
           method: "POST",
           body: fd,
         });
@@ -248,7 +249,15 @@ const WebCamRecorder = forwardRef(
     }));
  
     return (
-<div className="p-4 bg-white rounded shadow">
+<div className="p-4 bg-white rounded shadow relative">
+      {showMultipleFaces && (
+        <>
+          <div className="fixed inset-0 backdrop-blur-sm bg-black/30 z-50" />
+          <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-60 bg-yellow-400 text-black px-4 py-2 rounded shadow">
+            🚨 Multiple faces detected — page blurred
+          </div>
+        </>
+      )}
 <h2 className="text-xl font-bold mb-4">Video Interview</h2>
  
         {/* Live Camera Feed */}

@@ -75,6 +75,7 @@ const GiveTest = ({ jdId }) => {
     face_not_visible: 0,
   });
   const [showMultipleFaces, setShowMultipleFaces] = useState(false);
+  const [showTabSwitch, setShowTabSwitch] = useState(false);
   const violationsRef = useRef(violations);
   // Track which toast alerts have already been shown to avoid duplicates
   const shownToastsRef = useRef(new Set());
@@ -802,9 +803,15 @@ const GiveTest = ({ jdId }) => {
 
         // Debug logs (helpful during integration)
         console.log('Submitting section', section.name, 'with questionSetId=', questionSetId);
-        console.log('submissionData.question_set_id=', submissionData.question_set_id);
-
-        const result = await testApi.submitSection(questionSetId, submissionData);
+        console.log('submissionData:', submissionData);
+        let result = null;
+        try {
+          result = await testApi.submitSection(questionSetId, submissionData);
+          console.log('submitSection result:', result);
+        } catch (err) {
+          console.error('submitSection threw error:', err);
+          throw err;
+        }
         results.push({ sectionName: section.name, result });
       }
 
@@ -902,6 +909,17 @@ const GiveTest = ({ jdId }) => {
     }
 
     if (!['tab_switches', 'inactivities', 'face_not_visible'].includes(key)) return;
+
+    // If user switches tab, briefly blur the page and show a single alert (like multiple_faces)
+    if (key === 'tab_switches') {
+      try { toast.dismiss(); } catch (e) {}
+      if (!shownToastsRef.current.has('tab_switches')) {
+        toast.warning('⚠️ Tab switch detected — page blurred');
+        shownToastsRef.current.add('tab_switches');
+      }
+      setShowTabSwitch(true);
+      setTimeout(() => { try { setShowTabSwitch(false); } catch (e) {} }, 3000);
+    }
 
     setViolations(prev => {
       const updated = flush
@@ -1059,13 +1077,26 @@ const GiveTest = ({ jdId }) => {
   // When audio interview is open, show only that UI
   if (showAudioInterview) {
     return (
-      <AudioInterview
-        questions={currentSection?.questions || []}
-        candidateId={finalCandidateId}
-        questionSetId={questionSetId} 
-        baseUrl={window.REACT_APP_BASE_URL || 'http://127.0.0.1:5000'}
-        onClose={() => setShowAudioInterview(false)}
-        onComplete={(qa) => {
+      <>
+        <ActivityMonitor
+          questionSetId={questionSetId}
+          candidateName={userInfo.name}
+          email={userInfo.email}
+          faceEventRef={faceEventRef}
+          testStarted={testStarted}
+          submitted={submitted}
+          onViolation={handleViolation}
+        />
+
+        {!submitted && <FaceDetection faceEventRef={faceEventRef} />}
+
+        <AudioInterview
+          questions={currentSection?.questions || []}
+          candidateId={finalCandidateId}
+          questionSetId={questionSetId}
+          baseUrl={window.REACT_APP_BASE_URL || 'https://python-k0xt.onrender.com'}
+          onClose={() => setShowAudioInterview(false)}
+          onComplete={(qa) => {
             setAudioInterviewResults(qa);
             // merge audio answers into main answers map so submit includes them
             setAllAnswers(prev => {
@@ -1079,7 +1110,12 @@ const GiveTest = ({ jdId }) => {
             setAudioInterviewDone(true);
             toast.success('Audio interview completed.');
           }}
-      />
+          faceEventRef={faceEventRef}
+          showMultipleFaces={showMultipleFaces}
+          showTabSwitch={showTabSwitch}
+          sharedStream={streamRef.current || localStream}
+        />
+      </>
     );
   }
 

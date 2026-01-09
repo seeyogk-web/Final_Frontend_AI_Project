@@ -24,8 +24,22 @@ export const testApi = {
         },
         body: JSON.stringify(submissionData),
       });
-      if (!response.ok) throw new Error('Failed to submit test');
-      return await response.json();
+      const text = await response.text();
+      try {
+        const json = text ? JSON.parse(text) : null;
+        if (!response.ok) {
+          console.error('submitSection server error:', response.status, json || text);
+          throw new Error(json?.message || `Failed to submit test (${response.status})`);
+        }
+        return json;
+      } catch (parseErr) {
+        // non-JSON response
+        if (!response.ok) {
+          console.error('submitSection server error (non-json):', response.status, text);
+          throw new Error(`Failed to submit test (${response.status})`);
+        }
+        return text;
+      }
     } catch (error) {
       console.error('Error submitting section:', error);
       throw error;

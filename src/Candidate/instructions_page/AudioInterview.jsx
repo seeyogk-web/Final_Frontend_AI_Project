@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import aiAvatar from '../../img/interviewer.png';
+import WebcamPreview from '../Component/WebcamPreview';
+import * as blazeface from '@tensorflow-models/blazeface';
+import '@tensorflow/tfjs';
 
 export default function AudioInterview({
   questions = [],
@@ -8,6 +11,9 @@ export default function AudioInterview({
   baseUrl = window.REACT_APP_BASE_URL || 'http://127.0.0.1:5000',
   onClose = () => {},
   onComplete = () => {},
+  showMultipleFaces = false,
+  faceEventRef = null,
+  showTabSwitch = false,
 }) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -15,6 +21,17 @@ export default function AudioInterview({
   const audioChunksRef = useRef([]);
   const recognitionRef = useRef(null);
   const qaListRef = useRef([]);
+
+  // Movable preview so face-detection can operate while inside audio UI
+  const previewWebcamRef = useRef(null);
+  const previewCanvasRef = useRef(null);
+  const [floatingPos, setFloatingPos] = useState({ x: 20, y: 80 });
+  const [hasVideoFrame, setHasVideoFrame] = useState(true);
+  const modelRef = useRef(null);
+  const detectLoopRef = useRef(null);
+  const [localMultipleFaces, setLocalMultipleFaces] = useState(false);
+  const missCountRef = useRef(0);
+  const prevReasonRef = useRef(null);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [status, setStatus] = useState('idle');
@@ -302,6 +319,83 @@ export default function AudioInterview({
     }
   };
 
+  // Face detection on the movable preview: reuse BlazeFace logic used elsewhere
+  useEffect(() => {
+    let mounted = true;
+    const startLoop = () => {
+      detectLoopRef.current = setInterval(async () => {
+        try {
+          const videoEl = previewWebcamRef.current && previewWebcamRef.current.video;
+          if (!videoEl || videoEl.readyState < 2 || !modelRef.current) return;
+          const faces = await modelRef.current.estimateFaces(videoEl, false);
+          console.log('[AudioInterview][faceDetect] faces=', faces?.length || 0);
+          if (faces && faces.length > 1) {
+            if (!prevMultipleRef.current) console.log('[AudioInterview] detected >1 face');
+            missCountRef.current = 0;
+            setLocalMultipleFaces(true);
+            try { faceEventRef?.current?.({ type: 'multiple_faces', count: faces.length }); } catch (e) {}
+            return;
+          }
+
+          if (faces && faces.length === 1) {
+            missCountRef.current = 0;
+            setLocalMultipleFaces(false);
+            try { faceEventRef?.current?.({ type: 'single_face' }); } catch (e) {}
+            return;
+          }
+
+          // No faces: allow a couple misses before treating as no-face
+          missCountRef.current += 1;
+          if (missCountRef.current >= 2) {
+            missCountRef.current = 0;
+            setLocalMultipleFaces(false);
+            try { faceEventRef?.current?.({ type: 'no_face' }); } catch (e) {}
+          }
+        } catch (err) {
+          // ignore detect errors
+        }
+      }, 1500);
+    };
+
+    const init = async () => {
+      try {
+        modelRef.current = await blazeface.load();
+        if (!mounted) return;
+        startLoop();
+      } catch (err) {
+        console.warn('AudioInterview face model load failed', err);
+      }
+    };
+
+    init();
+
+    return () => {
+      mounted = false;
+      clearInterval(detectLoopRef.current);
+    };
+  }, []);
+
+  // Determine the current alert reason and whether UI should be blurred
+  const currentReason = showMultipleFaces || localMultipleFaces ? 'multiple_faces' : showTabSwitch ? 'tab_switch' : null;
+  const effectiveMultiple = !!currentReason;
+
+  // Raise a single alert when we transition into any alert reason, and log changes
+  useEffect(() => {
+    if (currentReason && prevReasonRef.current !== currentReason) {
+      if (currentReason === 'multiple_faces') {
+        console.log('[AudioInterview] Multiple faces detected (effective).');
+        try { alert('🚨 Multiple faces detected — page blurred. Please ensure only you are on camera.'); } catch (e) {}
+      } else if (currentReason === 'tab_switch') {
+        console.log('[AudioInterview] Tab switch detected (effective).');
+        try { alert('⚠️ Tab switch detected — page blurred. Please return to the test tab.'); } catch (e) {}
+      }
+      prevReasonRef.current = currentReason;
+    } else if (!currentReason && prevReasonRef.current) {
+      console.log('[AudioInterview] Alert cleared.');
+      prevReasonRef.current = null;
+    }
+  }, [currentReason]);
+
   // Auto-play first question
   useEffect(() => {
     if (questions.length > 0) {
@@ -312,8 +406,29 @@ export default function AudioInterview({
   if (!candidateId || !questionSetId) return <div>Candidate or Question Set ID missing!</div>;
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-6xl h-[85vh] rounded-lg overflow-hidden shadow-xl flex">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Movable camera preview so global face-detection can blur this page as needed */}
+      <WebcamPreview
+        webcamRef={previewWebcamRef}
+        canvasRef={previewCanvasRef}
+        localStream={streamRef.current}
+        streamRef={streamRef}
+        hasVideoFrame={hasVideoFrame}
+        floatingPos={floatingPos}
+        setFloatingPos={setFloatingPos}
+        selectedDeviceId={null}
+      />
+      {/* Global blur overlay that sits above everything when multiple faces are detected */}
+      {effectiveMultiple && (
+        <>
+          <div className="fixed inset-0 backdrop-blur-sm bg-black/30 z-50" />
+          <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-60 bg-yellow-400 text-black px-4 py-2 rounded shadow">
+            🚨 Multiple faces detected — page blurred
+          </div>
+        </>
+      )}
+
+      <div className={`bg-white w-full max-w-6xl h-[85vh] rounded-lg overflow-hidden shadow-xl flex ${effectiveMultiple ? 'filter blur-sm pointer-events-none z-40' : 'z-50'}`}>
         {/* LEFT PANEL */}
         <div className="w-2/5 bg-slate-50 p-6 flex flex-col items-center">
           <div className="w-48 h-48 rounded-full overflow-hidden border-4 border-sky-400 shadow">
@@ -359,7 +474,7 @@ export default function AudioInterview({
         </div>
 
         {/* RIGHT PANEL */}
-        <div className="w-3/5 p-6 flex flex-col">
+        <div className={`w-3/5 p-6 flex flex-col ${effectiveMultiple ? 'filter blur-sm pointer-events-none' : ''}`}>
           <div className="flex items-center justify-between mb-3">
             <div className="flex gap-3 items-center">
               <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">You</div>
