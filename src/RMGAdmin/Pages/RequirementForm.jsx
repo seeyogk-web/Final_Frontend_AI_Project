@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useCompany } from '../../Context/companyContext';
 import { baseUrl } from '../../utils/ApiConstants';
+import { cities } from '../../utils/cities';
 
 function RequirementForm() {
   const { companies } = useCompany();
@@ -20,7 +21,7 @@ function RequirementForm() {
     preferredSkills: '',
     experience: '',
     positionAvailable: '',
-    location: '',
+    location: [],
     city: '',
     state: '',
     country: '',
@@ -59,12 +60,19 @@ function RequirementForm() {
 
   const handleChange = (e) => {
     const { name, value, type, files } = e.target;
-
     if (type === 'file') {
       setFormData({
         ...formData,
         attachments: files[0]
       });
+    } else if (name === 'location') {
+      // Add city to location array if not already present
+      if (value && !formData.location.includes(value)) {
+        setFormData({
+          ...formData,
+          location: [...formData.location, value]
+        });
+      }
     } else {
       setFormData({
         ...formData,
@@ -72,6 +80,30 @@ function RequirementForm() {
       });
     }
   };
+
+  // Remove city from location array
+  const handleRemoveLocation = (city) => {
+    setFormData({
+      ...formData,
+      location: formData.location.filter(loc => loc !== city)
+    });
+  };
+
+  // Dropdown open/close state for responsive UI
+  const [locationDropdownOpen, setLocationDropdownOpen] = useState(false);
+  const locationDropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (locationDropdownRef.current && !locationDropdownRef.current.contains(event.target)) {
+        setLocationDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -95,7 +127,8 @@ function RequirementForm() {
         skills: skillsArray,
         preferredSkills: preferredSkillsArray,
         salary: salaryValue,
-        assignedTo: formData.assignedTo
+        assignedTo: formData.assignedTo,
+        location: formData.location // send as array
       };
 
       delete submitData.attachments;
@@ -125,10 +158,8 @@ function RequirementForm() {
           preferredSkills: '',
           experience: '',
           positionAvailable: '',
-          location: '',
-          city: '',
-          state: '',
-          country: '',
+          workMode: '',
+          location: [],
           employmentType: '',
           salary: '',
           currency: '',
@@ -180,7 +211,7 @@ function RequirementForm() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2 ">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Company Name <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -189,7 +220,7 @@ function RequirementForm() {
                   value={companyName}
                   readOnly
                   disabled
-                  className="w-full cursor-not-allowed px-3 py-2 border bg-green border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full cursor-not-allowed px-3 py-2 border bg-[#D9D9D940] border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
 
@@ -332,16 +363,16 @@ function RequirementForm() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Location <span className="text-red-500">*</span>
+                  Work Mode <span className="text-red-500">*</span>
                 </label>
                 <select
-                  name="location"
-                  value={formData.location}
+                  name="workMode"
+                  value={formData.workMode}
                   onChange={handleChange}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-[#D9D9D940]"
                 >
-                  <option value="">Select location</option>
+                  <option value="">Select work mode</option>
                   <option value="On-site">On-site</option>
                   <option value="Remote">Remote</option>
                   <option value="Hybrid">Hybrid</option>
@@ -350,22 +381,62 @@ function RequirementForm() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  City <span className="text-red-500">*</span>
+                  Location <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleChange}
-                  placeholder="Enter City"
-                  required
-                  className="w-full px-3 py-2 border bg-[#D9D9D940] border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                <div className="relative" ref={locationDropdownRef}>
+                  <div
+                    className="flex flex-wrap gap-2 min-h-[44px] w-full px-3 py-2 border bg-[#D9D9D940] border-gray-300 rounded-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    onClick={() => setLocationDropdownOpen(!locationDropdownOpen)}
+                  >
+                    {formData.location.length === 0 && (
+                      <span className="text-gray-400">Select Location(s)</span>
+                    )}
+                    {formData.location.map((city, idx) => (
+                      <span key={city} className="flex items-center bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-medium shadow-sm">
+                        {city}
+                        <button
+                          type="button"
+                          className="ml-2 text-blue-500 hover:text-red-500 focus:outline-none"
+                          onClick={e => { e.stopPropagation(); handleRemoveLocation(city); }}
+                          aria-label={`Remove ${city}`}
+                        >
+                          &times;
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  {locationDropdownOpen && (
+                    <div className="absolute z-10 mt-1 w-full max-h-60 overflow-auto bg-white border border-gray-300 rounded-md shadow-lg animate-fade-in">
+                      {cities.filter(city => !formData.location.includes(city)).length === 0 ? (
+                        <div className="px-4 py-2 text-gray-400 text-sm">No more cities to select</div>
+                      ) : (
+                        cities.filter(city => !formData.location.includes(city)).map((city, idx) => (
+                          <div
+                            key={city}
+                            className="px-4 py-2 hover:bg-blue-100 cursor-pointer text-gray-700 text-sm transition-colors"
+                            onClick={() => { handleChange({ target: { name: 'location', value: city } }); setLocationDropdownOpen(false); }}
+                          >
+                            {city}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+                <style>{`
+                  @keyframes fade-in {
+                    from { opacity: 0; transform: translateY(-10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                  }
+                  .animate-fade-in {
+                    animation: fade-in 0.2s ease;
+                  }
+                `}</style>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
+            {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> */}
+              {/* <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   State <span className="text-red-500">*</span>
                 </label>
@@ -378,9 +449,9 @@ function RequirementForm() {
                   required
                   className="w-full px-3 py-2 border bg-[#D9D9D940] border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
-              </div>
+              </div> */}
 
-              <div>
+              {/* <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Country <span className="text-red-500">*</span>
                 </label>
@@ -393,8 +464,8 @@ function RequirementForm() {
                   required
                   className="w-full px-3 py-2 border bg-[#D9D9D940] border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
-              </div>
-            </div>
+              </div> */}
+            {/* </div> */}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
