@@ -852,7 +852,7 @@ function Report() {
           <table className="w-full min-w-[700px]">
             <thead>
               <tr className="border-b border-gray-300 bg-gray-50">
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">ID</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Sr.No.</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Name</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Job Title</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Total Question</th>
@@ -867,7 +867,7 @@ function Report() {
                     key={index}
                     className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
                   >
-                    <td className="py-4 px-4 text-sm text-gray-800">{candidate.id}</td>
+                    <td className="py-4 px-4 text-sm text-gray-800">{startIndex + index + 1}</td>
                     <td className="py-4 px-4 text-sm text-gray-600">{candidate.name}</td>
                     <td className="py-4 px-4 text-sm text-gray-600">{candidate.jobTitle}</td>
                     <td className="py-4 px-4 text-sm text-gray-600">{candidate.totalQuestion}</td>

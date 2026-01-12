@@ -263,10 +263,10 @@ function CreateJD() {
     };
 
     const handleShareLinkClick = () => {
-    if (generatedJD && jdUrl) {
-        setShowSharePopup(true);
-    }
-};
+        if (generatedJD && jdUrl) {
+            setShowSharePopup(true);
+        }
+    };
 
     const shareText = getFullJDContent();
 
@@ -523,9 +523,9 @@ function CreateJD() {
                         <div className="flex justify-center gap-4 mt-8">
                             <button
                                 type="submit"
-                                disabled={creating || !formData.offerId}
+                                disabled={creating || !formData.offerId || generatedJD}
                                 className={`px-12 py-3 bg-black text-white rounded-xl font-medium 
-                                    transition-colors shadow-sm ${creating || !formData.offerId
+        transition-colors shadow-sm ${creating || !formData.offerId || generatedJD
                                         ? 'opacity-50 cursor-not-allowed'
                                         : 'hover:bg-gray-800'
                                     }`}
@@ -535,11 +535,11 @@ function CreateJD() {
                             <button
                                 type="button"
                                 onClick={handleShareLinkClick}
-                                disabled={!generatedJD || !jdUrl}  
+                                disabled={!generatedJD || !jdUrl}
                                 className={`px-12 py-3 bg-black text-white rounded-xl font-medium 
         transition-colors shadow-sm ${!generatedJD || !jdUrl
                                         ? 'opacity-50 cursor-not-allowed'
-                                        : 'hover:bg-gray-800'}`} 
+                                        : 'hover:bg-gray-800'}`}
                             >
                                 Share Link
                             </button>

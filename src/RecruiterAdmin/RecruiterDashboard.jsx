@@ -236,54 +236,54 @@ export default function RecruiterDashboard() {
                     </div>
                 </div>
 
-                <div className="bg-white rounded-2xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-6 flex flex-col">
-                    <div className="flex justify-between">
-                        <h2 className="text-lg font-semibold text-gray-800">Statistics</h2>
-                        <div className="text-sm text-gray-600">
-                            <p>
-                                Summary
-                                <br />
-                                <span className="text-blue-500 font-medium">{totalJd}</span> Total JD
-                                <br />
-                                <span className="text-pink-500 font-medium">{jdByRecruiter}</span> By Recruiter
-                                <br />
-                                <span className="text-lime-500 font-medium">{totalCandidates}</span> Candidates
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex-1 mt-6 relative">
-                        <svg
-                            viewBox="0 0 100 40"
-                            preserveAspectRatio="none"
-                            className="absolute inset-0 w-full h-full"
-                        >
-                            <path
-                                d="M0,30 C10,25 30,35 50,20 70,25 90,15 100,30"
-                                fill="none"
-                                stroke="#3b82f6"
-                                strokeWidth="2"
-                            />
-                            <path
-                                d="M0,35 C20,30 40,25 60,35 80,30 100,25 100,35"
-                                fill="none"
-                                stroke="#ec4899"
-                                strokeWidth="2"
-                            />
-                        </svg>
-                    </div>
-                    <div className="mt-4">
-                        <div className="flex justify-between text-sm">
-                            <p className="text-gray-500">Recruiter Contribution</p>
-                            <p className="text-gray-700 font-medium">{recruiterJdPercentage}%</p>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                            <div 
-                                className="bg-pink-500 h-2 rounded-full transition-all duration-500"
-                                style={{ width: `${recruiterJdPercentage}%` }}
-                            ></div>
-                        </div>
-                    </div>
-                </div>
+                <div className="bg-white rounded-2xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-4 sm:p-6 flex flex-col overflow-hidden min-h-[250px] sm:min-h-[280px]">
+    <div className="flex flex-col sm:flex-row justify-between gap-3 sm:gap-4">
+        <h2 className="text-base sm:text-lg font-semibold text-gray-800">Statistics</h2>
+        <div className="text-xs sm:text-sm text-gray-600">
+            <p className="leading-relaxed">
+                <span className="font-medium">Summary</span>
+                <br />
+                <span className="text-blue-500 font-medium">{totalJd}</span> Total JD
+                <br />
+                <span className="text-pink-500 font-medium">{jdByRecruiter}</span> By Recruiter
+                <br />
+                <span className="text-lime-500 font-medium">{totalCandidates}</span> Candidates
+            </p>
+        </div>
+    </div>
+    <div className="flex-1 mt-4 sm:mt-6 relative min-h-[80px] sm:min-h-[100px]">
+        <svg
+            viewBox="0 0 100 40"
+            preserveAspectRatio="none"
+            className="absolute inset-0 w-full h-full"
+        >
+            <path
+                d="M0,30 C10,25 30,35 50,20 70,25 90,15 100,30"
+                fill="none"
+                stroke="#3b82f6"
+                strokeWidth="2"
+            />
+            <path
+                d="M0,35 C20,30 40,25 60,35 80,30 100,25 100,35"
+                fill="none"
+                stroke="#ec4899"
+                strokeWidth="2"
+            />
+        </svg>
+    </div>
+    <div className="mt-3 sm:mt-4">
+        <div className="flex justify-between text-xs sm:text-sm gap-2">
+            <p className="text-gray-500 truncate">Recruiter Contribution</p>
+            <p className="text-gray-700 font-medium flex-shrink-0">{recruiterJdPercentage}%</p>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+            <div 
+                className="bg-pink-500 h-2 rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(recruiterJdPercentage, 100)}%` }}
+            ></div>
+        </div>
+    </div>
+</div>
             </div>
 
             <div className="mt-6">
@@ -519,36 +519,36 @@ export default function RecruiterDashboard() {
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-                    <div className="bg-white rounded-2xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-6 flex flex-col justify-center items-center">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+    <div className="bg-white rounded-2xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-6 flex flex-col justify-center items-center min-h-[150px]">
                         <h3 className="text-sm text-gray-500 mb-1">TOTAL</h3>
                         <h1 className="text-3xl font-bold text-blue-600">{totalJd}</h1>
                         <p className="text-sm text-gray-500">Job Descriptions</p>
                     </div>
 
-                    <div className="bg-white rounded-2xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-6 flex flex-col justify-center items-center">
-                        <h3 className="text-sm text-gray-500 mb-1">BY RECRUITER</h3>
+                    <div className="bg-white rounded-2xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-6 flex flex-col justify-center items-center min-h-[150px]">
+    <h3 className="text-sm text-gray-500 mb-1">BY RECRUITER</h3>
                         <h1 className="text-3xl font-bold text-pink-600">{jdByRecruiter}</h1>
                         <p className="text-sm text-gray-500">Created by You</p>
                     </div>
 
-                    <div className="bg-white rounded-2xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-6 flex flex-col items-center justify-center">
-                        <h3 className="text-sm text-gray-500 mb-1">CANDIDATES</h3>
-                        <h1 className="text-3xl font-bold text-lime-600">{totalCandidates}</h1>
-                        <p className="text-sm text-gray-500">Total Registered</p>
-                        <div className="w-full mt-4">
-                            <div className="flex justify-between text-xs text-gray-500 mb-1">
-                                <span>Recruiter Contribution</span>
-                                <span>{recruiterJdPercentage}%</span>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                                <div 
-                                    className="bg-pink-500 h-2 rounded-full transition-all duration-500"
-                                    style={{ width: `${recruiterJdPercentage}%` }}
-                                ></div>
-                            </div>
-                        </div>
-                    </div>
+                    <div className="bg-white rounded-2xl shadow-[0px_0px_6px_0px_rgba(0,_0,_0,_0.35)] p-4 sm:p-6 flex flex-col items-center justify-center min-h-[150px] sm:col-span-2 lg:col-span-1 overflow-hidden">
+    <h3 className="text-xs sm:text-sm text-gray-500 mb-1 text-center">CANDIDATES</h3>
+    <h1 className="text-2xl sm:text-3xl font-bold text-lime-600">{totalCandidates}</h1>
+    <p className="text-xs sm:text-sm text-gray-500 text-center">Total Registered</p>
+    <div className="w-full mt-4 max-w-full">
+        <div className="flex justify-between text-[10px] sm:text-xs text-gray-500 mb-1 gap-2">
+            <span className="truncate">Recruiter Contribution</span>
+            <span className="flex-shrink-0">{recruiterJdPercentage}%</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+                className="bg-pink-500 h-2 rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(recruiterJdPercentage, 100)}%` }}
+            ></div>
+        </div>
+    </div>
+</div>
                 </div>
             </div>
         </div>

@@ -569,6 +569,8 @@ function Results() {
         throw new Error(txt || 'Failed loading finalized tests');
       }
       const data = await res.json();
+      console.log("hii", data);
+      
         // `data` is expected to be an array of tests from get_finalized_test
         const rawArr = Array.isArray(data) ? data : [];
         // Count occurrences per job_id (or question_set_id fallback)
@@ -592,6 +594,7 @@ function Results() {
             jobTitle: numberedTitle,
             totalCandidates: t.candidate_id ? (String(t.candidate_id).split(',').filter(Boolean).length) : 0,
             testDate: formatDate(t.exam_date || t.createdAt),
+            createdAt: formatDate(t.createdAt),
             raw: t
           };
         });
@@ -822,10 +825,10 @@ function Results() {
               <thead className="bg-gray-200">
                 <tr>
                   <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">S.No</th>
-                  <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">Job ID</th>
                   <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">Job Title</th>
                   <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">Total Candidate</th>
                   <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">Test Date</th>
+                  <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">Created At</th>
                   <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">Actions</th>
                 </tr>
               </thead>
@@ -837,7 +840,7 @@ function Results() {
                       <td className="px-4 py-4 text-sm text-gray-700 border-b border-gray-300">
                         {(indexOfFirstRow + index + 1)}.
                       </td>
-                      <td className="px-4 py-4 text-sm text-gray-700 border-b border-gray-300">{job.jobId}</td>
+                     
                       <td className="px-4 py-4 text-sm text-gray-700 border-b border-gray-300">{job.jobTitle}</td>
                       <td className="px-4 py-4 border-b border-gray-300">
                         <span className="inline-flex items-center justify-center min-w-[60px] px-3 py-1 bg-green-200 text-green-800 text-sm font-medium rounded-full">
@@ -846,6 +849,9 @@ function Results() {
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-700 border-b border-gray-300">
                         {job.testDate || 'N/A'}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-gray-700 border-b border-gray-300">
+                        {job.createdAt || 'N/A'}
                       </td>
                       <td className="px-4 py-4 border-b border-gray-300">
                         <div className="flex items-center gap-2">

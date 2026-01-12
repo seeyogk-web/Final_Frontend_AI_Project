@@ -203,6 +203,9 @@ function Assessment() {
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
               <th className="text-left py-4 px-6 font-semibold text-gray-700">
+                Sr.No.
+              </th>
+              <th className="text-left py-4 px-6 font-semibold text-gray-700">
                 Company
               </th>
               <th className="text-left py-4 px-6 font-semibold text-gray-700">
@@ -247,6 +250,10 @@ function Assessment() {
                   key={row.question_set_id || row.job_id || idx}
                   className="border-b border-gray-200 hover:bg-gray-50 transition"
                 >
+                  <td className="py-3 px-6 text-blue-600 cursor-pointer">
+                    {startIndex + idx + 1}.
+                  </td>
+
                   <td className="py-3 px-6 text-blue-600 cursor-pointer">
                     {row.company}
                   </td>
