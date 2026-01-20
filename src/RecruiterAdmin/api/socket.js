@@ -1,8 +1,8 @@
 // socket.js
 import { io } from "socket.io-client";
 
-const socket = io("http://103.192.198.240", { // https://exam-backend-11.onrender.com or path nhi rahega // http://20.81.204.72
-  path:"/socket.io",
+const socket = io("https://exam-backend-11.onrender.com", { // https://exam-backend-11.onrender.com or path nhi rahega // https://103.192.198.240
+  // path:"/socket.io",
   transports: ["websocket"],
   reconnection: true,
   reconnectionAttempts: Infinity,
