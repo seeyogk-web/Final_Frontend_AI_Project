@@ -2,11 +2,7 @@
 // API integration for test review and finalization
 import { pythonUrl } from "../../utils/ApiConstants";
 
-<<<<<<< HEAD
-const API_BASE_URL = `${pythonUrl}/ai/v1`;
-=======
 const API_BASE_URL = `${pythonUrl}/v1`;
->>>>>>> 123804a09bd09cf07464eabdf1b7d6d5c8e06bf3
 
 class ReviewAPI {
     /**
